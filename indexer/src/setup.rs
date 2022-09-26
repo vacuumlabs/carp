@@ -12,7 +12,7 @@ use oura::{
     filters::selection::{self, Predicate},
     mapper,
     pipelining::{FilterProvider, SourceProvider, StageReceiver},
-    sources::{n2c, AddressArg, BearerKind, IntersectArg, MagicArg, PointArg},
+    sources::{n2n, AddressArg, BearerKind, IntersectArg, MagicArg, PointArg},
     utils::{ChainWellKnownInfo, Utils, WithUtils},
 };
 
@@ -84,10 +84,13 @@ pub fn oura_bootstrap(
         ..Default::default()
     };
 
+
+    tracing::info!("Socket address: {}", socket);
+
     #[allow(deprecated)]
-    let source_config = n2c::Config {
-        address: AddressArg(BearerKind::Unix, socket),
-        // address: AddressArg(BearerKind::Tcp, socket),
+    let source_config = n2n::Config {
+        // address: AddressArg(BearerKind::Unix, socket),
+        address: AddressArg(BearerKind::Tcp, socket),
         magic: Some(magic),
         well_known: None,
         mapper,
