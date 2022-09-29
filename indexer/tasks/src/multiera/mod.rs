@@ -14,4 +14,5 @@ pub mod multiera_unused_input;
 pub mod multiera_used_inputs;
 pub mod multiera_used_outputs;
 pub mod relation_map;
+pub mod wing_riders_example;
 pub mod utils;
