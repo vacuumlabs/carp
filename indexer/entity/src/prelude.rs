@@ -69,3 +69,8 @@ pub use super::tx_credential::{
     Model as TxCredentialModel, PrimaryKey as TxCredentialPrimaryKey,
     Relation as TxCredentialRelation,
 };
+pub use super::asset_transfer::{
+    ActiveModel as AssetTransferActiveModel, Column as AssetTransferColumn, Entity as AssetTransfer,
+    Model as AssetTransferModel, PrimaryKey as AssetTransferPrimaryKey,
+    Relation as AssetTransferRelation,
+};
