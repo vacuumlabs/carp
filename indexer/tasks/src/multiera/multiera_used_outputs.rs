@@ -55,14 +55,14 @@ async fn handle_output(
     addresses: &BTreeMap<Vec<u8>, AddressInBlock>,
     readonly: bool,
 ) -> Result<Vec<TransactionOutputModel>, DbErr> {
-    let mut queued_output = Vec::<QueuedOutput>::default();
+    let mut queued_outputs = Vec::<QueuedOutput>::default();
 
     for (tx_body, cardano_transaction) in block.1.txs().iter().zip(multiera_txs) {
         let outputs = tx_body.outputs();
         if cardano_transaction.is_valid {
             for (idx, output) in outputs.iter().enumerate() {
                 queue_output(
-                    &mut queued_output,
+                    &mut queued_outputs,
                     tx_body,
                     cardano_transaction.id,
                     output,
@@ -73,7 +73,7 @@ async fn handle_output(
         if !cardano_transaction.is_valid {
             if let Some(output) = tx_body.collateral_return().as_ref() {
                 queue_output(
-                    &mut queued_output,
+                    &mut queued_outputs,
                     tx_body,
                     cardano_transaction.id,
                     output,
@@ -88,7 +88,7 @@ async fn handle_output(
     if readonly {
         Ok(output_from_pointer(
             db_tx,
-            queued_output
+            queued_outputs
                 .iter()
                 .map(|output| (output.tx_id, output.idx))
                 .collect::<Vec<_>>()
@@ -96,12 +96,12 @@ async fn handle_output(
         )
         .await?)
     } else {
-        Ok(insert_outputs(addresses, &queued_output, db_tx).await?)
+        Ok(insert_outputs(addresses, &queued_outputs, db_tx).await?)
     }
 }
 
 fn queue_output(
-    queued_output: &mut Vec<QueuedOutput>,
+    queued_outputs: &mut Vec<QueuedOutput>,
     tx_body: &MultiEraTx<'_>,
     tx_id: i64,
     output: &MultiEraOutput,
@@ -112,7 +112,7 @@ fn queue_output(
         .map_err(|e| panic!("{:?} {:?}", e, hex::encode(tx_body.hash())))
         .unwrap();
 
-    queued_output.push(QueuedOutput {
+    queued_outputs.push(QueuedOutput {
         payload: output.encode(),
         address: addr.to_vec(),
         tx_id,
@@ -122,15 +122,15 @@ fn queue_output(
 
 async fn insert_outputs(
     address_to_model_map: &BTreeMap<Vec<u8>, AddressInBlock>,
-    queued_output: &[QueuedOutput],
+    queued_outputs: &[QueuedOutput],
     txn: &DatabaseTransaction,
 ) -> Result<Vec<TransactionOutputModel>, DbErr> {
-    if queued_output.is_empty() {
+    if queued_outputs.is_empty() {
         return Ok(vec![]);
     };
 
     Ok(
-        TransactionOutput::insert_many(queued_output.iter().map(|entry| {
+        TransactionOutput::insert_many(queued_outputs.iter().map(|entry| {
             TransactionOutputActiveModel {
                 address_id: Set(address_to_model_map
                     .get(get_truncated_address(&entry.address))
