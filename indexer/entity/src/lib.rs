@@ -15,3 +15,4 @@ pub mod native_asset;
 pub mod plutus_data;
 pub mod plutus_data_hash;
 pub mod transaction_metadata;
+pub mod asset_transfer;

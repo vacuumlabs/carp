@@ -9,7 +9,7 @@ use pallas::ledger::{
     traverse::{MultiEraBlock, MultiEraOutput, MultiEraTx},
 };
 
-use super::multiera_address::MultieraAddressTask;
+use super::{multiera_address::MultieraAddressTask, multiera_asset_transfer::QueuedAssetTransfer};
 use crate::config::ReadonlyConfig::ReadonlyConfig;
 use crate::dsl::task_macro::*;
 use crate::era_common::get_truncated_address;
@@ -22,7 +22,7 @@ carp_task! {
   era multiera;
   dependencies [MultieraAddressTask];
   read [multiera_txs, multiera_addresses];
-  write [multiera_outputs];
+  write [multiera_outputs, multiera_queued_asset_transfers];
   should_add_task |block, _properties| {
     // recall: txs may have no outputs if they just burn all inputs as fee
     block.1.txs().iter().any(|tx| tx.outputs().len() > 0)
@@ -35,7 +35,8 @@ carp_task! {
       task.config.readonly
   );
   merge_result |previous_data, result| {
-    *previous_data.multiera_outputs = result;
+    *previous_data.multiera_outputs = result.0;
+    *previous_data.multiera_queued_asset_transfers = result.1;
   };
 }
 
@@ -54,15 +55,17 @@ async fn handle_output(
     multiera_txs: &[TransactionModel],
     addresses: &BTreeMap<Vec<u8>, AddressInBlock>,
     readonly: bool,
-) -> Result<Vec<TransactionOutputModel>, DbErr> {
-    let mut queued_output = Vec::<QueuedOutput>::default();
+) -> Result<(Vec<TransactionOutputModel>, Vec<QueuedAssetTransfer>), DbErr> {
+    let mut queued_outputs = Vec::<QueuedOutput>::default();
+    let mut queued_asset_transfers = Vec::<QueuedAssetTransfer>::default();
 
     for (tx_body, cardano_transaction) in block.1.txs().iter().zip(multiera_txs) {
         let outputs = tx_body.outputs();
         if cardano_transaction.is_valid {
             for (idx, output) in outputs.iter().enumerate() {
                 queue_output(
-                    &mut queued_output,
+                    &mut queued_outputs,
+                    &mut queued_asset_transfers,
                     tx_body,
                     cardano_transaction.id,
                     output,
@@ -73,7 +76,8 @@ async fn handle_output(
         if !cardano_transaction.is_valid {
             if let Some(output) = tx_body.collateral_return().as_ref() {
                 queue_output(
-                    &mut queued_output,
+                    &mut queued_outputs,
+                    &mut queued_asset_transfers,
                     tx_body,
                     cardano_transaction.id,
                     output,
@@ -86,22 +90,29 @@ async fn handle_output(
     }
 
     if readonly {
-        Ok(output_from_pointer(
-            db_tx,
-            queued_output
-                .iter()
-                .map(|output| (output.tx_id, output.idx))
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )
-        .await?)
+        Ok((
+            output_from_pointer(
+                db_tx,
+                queued_outputs
+                    .iter()
+                    .map(|output| (output.tx_id, output.idx))
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            )
+            .await?,
+            queued_asset_transfers,
+        ))
     } else {
-        Ok(insert_outputs(addresses, &queued_output, db_tx).await?)
+        Ok((
+            insert_outputs(addresses, &queued_outputs, db_tx).await?,
+            queued_asset_transfers,
+        ))
     }
 }
 
 fn queue_output(
-    queued_output: &mut Vec<QueuedOutput>,
+    queued_outputs: &mut Vec<QueuedOutput>,
+    queued_asset_transfers: &mut Vec<QueuedAssetTransfer>,
     tx_body: &MultiEraTx<'_>,
     tx_id: i64,
     output: &MultiEraOutput,
@@ -112,25 +123,33 @@ fn queue_output(
         .map_err(|e| panic!("{:?} {:?}", e, hex::encode(tx_body.hash())))
         .unwrap();
 
-    queued_output.push(QueuedOutput {
+    queued_outputs.push(QueuedOutput {
         payload: output.encode(),
         address: addr.to_vec(),
         tx_id,
         idx,
     });
+
+    // Note: this handles tokens as well as ADA
+    output.assets().iter().for_each(|asset| {
+        queued_asset_transfers.push(QueuedAssetTransfer {
+            output_pointer: (tx_id, idx),
+            asset: asset.clone(),
+        })
+    });
 }
 
 async fn insert_outputs(
     address_to_model_map: &BTreeMap<Vec<u8>, AddressInBlock>,
-    queued_output: &[QueuedOutput],
+    queued_outputs: &[QueuedOutput],
     txn: &DatabaseTransaction,
 ) -> Result<Vec<TransactionOutputModel>, DbErr> {
-    if queued_output.is_empty() {
+    if queued_outputs.is_empty() {
         return Ok(vec![]);
     };
 
     Ok(
-        TransactionOutput::insert_many(queued_output.iter().map(|entry| {
+        TransactionOutput::insert_many(queued_outputs.iter().map(|entry| {
             TransactionOutputActiveModel {
                 address_id: Set(address_to_model_map
                     .get(get_truncated_address(&entry.address))
