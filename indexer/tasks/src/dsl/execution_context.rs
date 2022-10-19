@@ -28,6 +28,7 @@ macro_rules! data_to_type {
   (multiera_addresses) => { BTreeMap<Vec<u8>, AddressInBlock> };
   (multiera_metadata) => { Vec<TransactionMetadataModel> };
   (multiera_outputs) => { Vec<TransactionOutputModel> };
+  (multiera_queued_asset_transfers) => { Vec<QueuedAssetTransfer> };
   (multiera_used_inputs) => { Vec<TransactionInputModel> };
   (multiera_assets) => { Vec<NativeAssetModel> };
 }
