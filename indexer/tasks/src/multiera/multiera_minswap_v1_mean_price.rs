@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 
 use super::utils::common::{
     get_asset_amount, get_plutus_datum_for_output, get_sheley_payment_hash,
@@ -13,6 +13,7 @@ use pallas::ledger::{
 };
 
 const POOL_SCRIPT_HASH: &str = "e1317b152faac13426e6a83e06ff88a4d62cce3c1634ab0a5ec13309";
+const POOL_SCRIPT_HASH2: &str = "57c8e718c201fba10a9da1748d675b54281d3b1b983c5d1687fc7317";
 
 carp_task! {
     name MultieraMinSwapV1MeanPriceTask;
@@ -35,7 +36,6 @@ carp_task! {
     };
 }
 
-
 struct QueuedMeanPrice {
     tx_id: i64,
     address: Vec<u8>, // pallas::crypto::hash::Hash<32>
@@ -44,7 +44,6 @@ struct QueuedMeanPrice {
     amount1: u64,
     amount2: u64,
 }
-
 
 async fn handle_mean_price(
     db_tx: &DatabaseTransaction,
@@ -63,7 +62,6 @@ async fn handle_mean_price(
     if queued_prices.is_empty() {
         return Ok(());
     }
-
 
     // 2) Remove asset duplicates to build a list of all the <policy_id, asset_name> to query for.
     // ADA is ignored, it's not in the NativeAsset DB table
@@ -108,21 +106,17 @@ async fn handle_mean_price(
     Ok(())
 }
 
-
-
-
 fn queue_mean_price(queued_prices: &mut Vec<QueuedMeanPrice>, tx: &MultiEraTx, tx_id: i64) {
     // Find the pool address (Note: there should be at most one pool output)
-    for output in tx
-        .outputs()
-        .iter()
-        .find(|o| get_sheley_payment_hash(o.address()).as_deref() == Some(POOL_SCRIPT_HASH))
-    {
+    for output in tx.outputs().iter().find(|o| {
+        get_sheley_payment_hash(o.address()).as_deref() == Some(POOL_SCRIPT_HASH)
+            || get_sheley_payment_hash(o.address()).as_deref() == Some(POOL_SCRIPT_HASH2)
+    }) {
         // Remark: The datum that corresponds to the pool output's datum hash should be present
         // in tx.plutus_data()
         if let Some(datum) = get_plutus_datum_for_output(output, &tx.plutus_data()) {
             let datum = datum.to_json();
-            
+
             let get_asset_item = |i, j| {
                 let item = datum["fields"][i]["fields"][j]["bytes"]
                     .as_str()
@@ -140,7 +134,7 @@ fn queue_mean_price(queued_prices: &mut Vec<QueuedMeanPrice>, tx: &MultiEraTx, t
             // extract plutus
             let asset1 = get_asset(get_asset_item(0, 0), get_asset_item(0, 1));
             let asset2 = get_asset(get_asset_item(1, 0), get_asset_item(1, 1));
-            
+
             let amount1 = get_asset_amount(output, &asset1);
             let amount2 = get_asset_amount(output, &asset2);
 
