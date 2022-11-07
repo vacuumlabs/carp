@@ -15,7 +15,7 @@ use pallas::ledger::{
 const POOL_SCRIPT_HASH: &str = "e1317b152faac13426e6a83e06ff88a4d62cce3c1634ab0a5ec13309";
 
 carp_task! {
-    name MultieraMinswapV1MeanPriceTask;
+    name MultieraMinSwapV1MeanPriceTask;
     configuration EmptyConfig;
     doc "Adds Minswap V1 mean price updates to the database";
     era multiera;
@@ -124,7 +124,7 @@ fn queue_mean_price(queued_prices: &mut Vec<QueuedMeanPrice>, tx: &MultiEraTx, t
             let datum = datum.to_json();
             
             let get_asset_item = |i, j| {
-                let item = datum["fields"][1]["fields"][0]["fields"][i]["fields"][j]["bytes"]
+                let item = datum["fields"][i]["fields"][j]["bytes"]
                     .as_str()
                     .unwrap()
                     .to_string();
