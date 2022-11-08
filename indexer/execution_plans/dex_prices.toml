@@ -58,4 +58,6 @@ readonly=false
 
 [MultieraCip25EntryTask]
 
+[MultieraWingRidersV1MeanPriceTask]
+
 [MultieraMinSwapV1MeanPriceTask]
