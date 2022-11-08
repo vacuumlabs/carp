@@ -30,36 +30,23 @@ readonly=false
 [MultieraTransactionTask]
 readonly=false
 
-[MultieraMetadataTask]
-readonly=false
-
 [MultieraAddressTask]
 
 [MultieraOutputTask]
 readonly=false
 
-[MultieraReferenceInputTask]
-readonly=false
-
 [MultieraUsedInputTask]
 readonly=false
-
-[MultieraUnusedInputTask]
-
-[MultieraStakeCredentialTask]
-
-[MultieraAddressCredentialRelationTask]
-readonly=false
-
-[MultieraTxCredentialRelationTask]
 
 [MultieraAssetMintTask]
 readonly=false
 
-[MultieraCip25EntryTask]
-
 [MultieraWingRidersV1MeanPriceTask]
 
+<<<<<<< HEAD
 [MultieraMinSwapV1MeanPriceTask]
 
 [MultieraSundaeSwapV1MeanPriceTask]
+=======
+[MultieraWingRidersV1SwapTask]
+>>>>>>> 6d7cac4... Update dex_prices.toml execution plan
