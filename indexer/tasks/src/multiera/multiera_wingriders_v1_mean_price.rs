@@ -2,8 +2,8 @@ use super::utils::common::{
     get_asset_amount, get_plutus_datum_for_output, get_sheley_payment_hash,
 };
 use super::utils::dex::{
-    build_asset, handle_mean_price, reduce_ada_amount, Dex, PoolType, QueuedMeanPrice,
-    WingRidersV1, WR_V1_POOL_FIXED_ADA, WR_V1_POOL_SCRIPT_HASH,
+    build_asset, get_pool_output_and_datum, handle_mean_price, reduce_ada_amount, Dex, PoolType,
+    QueuedMeanPrice, WingRidersV1, WR_V1_POOL_FIXED_ADA, WR_V1_POOL_SCRIPT_HASH,
 };
 use super::{multiera_address::MultieraAddressTask, utils::common::asset_from_pair};
 use crate::dsl::task_macro::*;
@@ -38,25 +38,6 @@ carp_task! {
   };
 }
 
-pub fn get_pool_output<'b>(tx: &'b MultiEraTx) -> Option<(MultiEraOutput<'b>, alonzo::PlutusData)> {
-    // Note: there should be at most one pool output
-    if let Some(output) = tx
-        .outputs()
-        .iter()
-        .find(|o| get_sheley_payment_hash(o.address()).as_deref() == Some(WR_V1_POOL_SCRIPT_HASH))
-    {
-        // Remark: The datum that corresponds to the pool output's datum hash should be present
-        // in tx.plutus_data()
-        if let Some(datum) = get_plutus_datum_for_output(output, &tx.plutus_data()) {
-            Some((output.clone(), datum))
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
 impl Dex for WingRidersV1 {
     fn queue_mean_price(
         &self,
@@ -64,7 +45,8 @@ impl Dex for WingRidersV1 {
         tx: &MultiEraTx,
         tx_id: i64,
     ) {
-        if let Some((output, datum)) = get_pool_output(tx) {
+        if let Some((output, datum)) = get_pool_output_and_datum(tx, &vec![WR_V1_POOL_SCRIPT_HASH])
+        {
             let datum = datum.to_json();
 
             let treasury1 = datum["fields"][1]["fields"][2]["int"].as_u64().unwrap();
