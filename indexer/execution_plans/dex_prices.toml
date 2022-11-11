@@ -44,3 +44,7 @@ readonly=false
 [MultieraWingRidersV1MeanPriceTask]
 
 [MultieraWingRidersV1SwapTask]
+
+[MultieraMinSwapV1MeanPriceTask]
+
+[MultieraSundaeSwapV1MeanPriceTask]
