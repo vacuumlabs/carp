@@ -1,4 +1,4 @@
-use super::dex::common::{handle_mean_price, PoolType};
+use super::dex::common::{handle_mean_price, DexType};
 use super::multiera_address::MultieraAddressTask;
 use crate::config::EmptyConfig::EmptyConfig;
 use crate::dsl::task_macro::*;
@@ -19,7 +19,7 @@ carp_task! {
       task.block,
       &previous_data.multiera_txs,
       &previous_data.multiera_addresses,
-      PoolType::WingRidersV1,
+      DexType::WingRidersV1,
   );
   merge_result |previous_data, _result| {
   };
