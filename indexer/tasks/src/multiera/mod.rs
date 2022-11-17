@@ -8,6 +8,7 @@ pub mod multiera_executor;
 pub mod multiera_metadata;
 pub mod multiera_reference_inputs;
 pub mod multiera_stake_credentials;
+pub mod multiera_sundaeswap_v1_mean_price;
 pub mod multiera_tx_credential_relations;
 pub mod multiera_txs;
 pub mod multiera_unused_input;
