@@ -1,20 +1,19 @@
 use super::utils::common::{
     get_asset_amount, get_plutus_datum_for_output, get_sheley_payment_hash,
 };
-use crate::multiera::dex::common::{
-    WR_V1_POOL_SCRIPT_HASH, WR_V1_POOL_FIXED_ADA,
-    build_asset, handle_mean_price, reduce_ada_amount, Dex, DexType, QueuedMeanPrice,
-    WingRidersV1
-};
-use pallas::ledger::primitives::alonzo;
 use super::{multiera_address::MultieraAddressTask, utils::common::asset_from_pair};
 use crate::config::EmptyConfig::EmptyConfig;
-
-use pallas::ledger::{
-  primitives::{alonzo::Certificate, Fragment},
-  traverse::{MultiEraBlock, MultiEraCert, MultiEraOutput, MultiEraTx},
+use crate::multiera::dex::common::{
+    build_asset, handle_mean_price, reduce_ada_amount, Dex, DexType, QueuedMeanPrice, WingRidersV1,
+    WR_V1_POOL_FIXED_ADA, WR_V1_POOL_SCRIPT_HASH,
 };
+use pallas::ledger::primitives::alonzo;
+
 use crate::dsl::task_macro::*;
+use pallas::ledger::{
+    primitives::{alonzo::Certificate, Fragment},
+    traverse::{MultiEraBlock, MultiEraCert, MultiEraOutput, MultiEraTx},
+};
 
 carp_task! {
   name MultieraWingRidersV1MeanPriceTask;
